@@ -1,15 +1,15 @@
 import logging
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
-
 import aiocoap.interfaces
 import aiocoap.message
 import aiocoap.tokenmanager
 import aiocoap.messagemanager
 import aiocoap.pipe
+from concurrent.futures import ThreadPoolExecutor
 from cryptography.hazmat.primitives import hashes
 from django.conf import settings
 from django.db import transaction, close_old_connections
+from django.utils import timezone
 from . import dtls, models
 
 _db_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="coap-server-db-bridge")
@@ -58,9 +58,12 @@ class CoAPDTLS:
             asyncio.create_task(self.process_connection(conn))
 
     async def process_connection(self, conn: dtls.DTLSConnection):
+        device = conn.extra_data["device"]
         remote = CoAPDTLSConnection(conn)
         while data := await conn.read():
             message = aiocoap.message.Message.decode(data, remote=remote)
+            device.last_seen = timezone.now()
+            await device.asave()
             self.mman.dispatch_message(message)
 
     def send(self, message: aiocoap.message.Message):

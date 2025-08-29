@@ -14,9 +14,10 @@ class Device(models.Model):
     public_key = models.BinaryField()
     authorized = models.BooleanField(default=False)
     config_group = models.ForeignKey(vas.models.ConfigGroup, on_delete=models.SET_NULL, null=True, blank=True, related_name="devices")
+    last_seen = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        short_device_id = self.device_id_str()[:11]
+        short_device_id = ":".join(f"{d:02X}" for d in self.device_id[:8])
         if self.name:
             return f"{self.name} ({short_device_id})"
         return short_device_id
@@ -66,14 +67,30 @@ class Device(models.Model):
 @receiver(post_save,   sender=vas.models.GoogleSmartTapCollector)
 @receiver(post_save,   sender=vas.models.GoogleSmartTapService)
 @receiver(post_delete, sender=vas.models.GoogleSmartTapService)
-def device_update(instance, **_kwargs):
+def device_config_update(instance, update_fields, **_kwargs):
+    update_fields = update_fields or ()
+
+    if isinstance(instance, Device) and "config_group" not in update_fields:
+        return
     transaction.on_commit(lambda: send_updated_device_config())
 
 
+@receiver(post_save, sender=Device)
+def device_update(instance, update_fields, **_kwargs):
+    transaction.on_commit(lambda: send_updated_device())
+
+
 def send_updated_device_config():
-    print("Send updated device config")
     r = redis.StrictRedis(
         host=settings.REDIS_SERVER, port=settings.REDIS_PORT, db=settings.REDIS_DB
     )
     r.publish("device_config_update", b"")
+    r.close()
+
+
+def send_updated_device():
+    r = redis.StrictRedis(
+        host=settings.REDIS_SERVER, port=settings.REDIS_PORT, db=settings.REDIS_DB
+    )
+    r.publish("device_update", b"")
     r.close()

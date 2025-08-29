@@ -18,9 +18,10 @@ SECRET_KEY = 'django-insecure-xy$t4d2u@ml0%xdh*u3z50uuj$9-1o(xq!huttfpmr)jc1yo_-
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "tappybara.eu.ngrok.io"]
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -28,12 +29,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'coap_server',
+    'pos_server',
     'vas',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -59,6 +63,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'tappybara.wsgi.application'
+ASGI_APPLICATION = 'tappybara.asgi.application'
 
 DATABASES = {
     'default': {
@@ -98,3 +103,5 @@ REDIS_DB = 1
 COAPS_SERVER_NAME = "Tappybara Test"
 COAPS_CERT_FILE = BASE_DIR / "priv" / "server-cert.der"
 COAPS_KEY_FILE = BASE_DIR / "priv" / "server-key.der"
+
+CORS_ALLOW_ALL_ORIGINS = True

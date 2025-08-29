@@ -34,14 +34,13 @@ class WhoAmI(aiocoap.resource.Resource):
 async def run_server(address: str, port: int):
     root = aiocoap.resource.Site()
 
-    redis_client = redis.StrictRedis(
+    redis_client = redis.asyncio.ConnectionPool(
         host=settings.REDIS_SERVER, port=settings.REDIS_PORT, db=settings.REDIS_DB
     )
-    redis_pubsub = redis_client.pubsub()
 
     root.add_resource(["whoami"], WhoAmI())
-    root.add_resource(["config"], views.DeviceConfig(redis_pubsub))
-    root.add_resource(["tap"], views.TapResult())
+    root.add_resource(["config"], views.DeviceConfig(redis_client))
+    root.add_resource(["tap"], views.TapResult(redis_client))
     root.add_resource([".well-known", "core"], aiocoap.resource.WKCResource(root.get_resources_as_linkheader))
 
     coap.CoAPServer(root, coap.CoAPDTLS, (address, port))

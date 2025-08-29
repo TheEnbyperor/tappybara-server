@@ -1,9 +1,11 @@
 import abc
+import asyncio
 import threading
 import redis.client
 import aiocoap.resource
 import aiocoap.error
 import asn1tools
+import json
 from cryptography.hazmat.primitives import serialization
 from django.conf import settings
 import vas.models
@@ -105,12 +107,16 @@ class DeviceConfig(aiocoap.resource.ObservableResource, ResponseRenderer):
     jer_content_format = CF_CONFIG_JER
     asn1_data_type = "ReaderConfig"
 
-    def __init__(self, redis_pubsub: redis.client.PubSub):
+    def __init__(self, redis_pool: redis.asyncio.ConnectionPool):
         super().__init__()
-        self.pubsub = redis_pubsub
+        self.redis = redis_pool
+        self.redis_pubsub = None
 
-    def handle_pubsub(self):
-        for message in self.pubsub.listen():
+    async def handle_pubsub(self):
+        redis_client = redis.asyncio.Redis(connection_pool=self.redis)
+        self.redis_pubsub = redis_client.pubsub()
+        await self.redis_pubsub.subscribe("device_config_update")
+        async for message in self.redis_pubsub.listen():
             if message["type"] != "message":
                 continue
 
@@ -119,12 +125,12 @@ class DeviceConfig(aiocoap.resource.ObservableResource, ResponseRenderer):
                 self.updated_state()
 
     def update_observation_count(self, new_count):
+        loop = asyncio.get_event_loop()
         if new_count == 0:
-            self.pubsub.unsubscribe("device_config_update")
+            if self.redis_pubsub:
+                loop.create_task(self.redis_pubsub.unsubscribe("device_config_update"))
         else:
-            self.pubsub.subscribe("device_config_update")
-            t = threading.Thread(target=self.handle_pubsub, daemon=True)
-            t.start()
+            loop.create_task(self.handle_pubsub())
 
     @staticmethod
     def encode_private_key(key: bytes):
@@ -176,8 +182,43 @@ class TapResult(aiocoap.resource.Resource, RequestParser):
     jer_content_format = CF_TAP_JER
     asn1_data_type = "TapData"
 
+    def __init__(self, redis_pool: redis.asyncio.ConnectionPool):
+        super().__init__()
+        self.redis = redis_pool
+
     @parse_request
     async def render_post(self, request, data):
         print(f"Got tap from {request.remote.device}: {data}")
+
+        if "redemption" in data:
+            redis_client = redis.asyncio.Redis(connection_pool=self.redis)
+
+            redemptions = []
+            redemption_type, redemption = data["redemption"]
+            if redemption_type == "appleVas":
+                for pass_data in redemption["passes"]:
+                    data_format, data = pass_data["data"]
+                    if data_format == "decrypted":
+                        try:
+                            redemptions.append(data["payload"].decode("utf-8"))
+                        except UnicodeDecodeError:
+                            pass
+                    # TODO: handle data device couldn't decrypt
+            elif redemption_type == "googleSmartTap":
+                for pass_data in redemption["serviceValues"]:
+                    for record_type, record in pass_data["records"]:
+                        if record_type == "customer":
+                            continue
+                        try:
+                            redemptions.append(record["redemptionData"].decode("utf-8"))
+                        except UnicodeDecodeError:
+                            pass
+
+            for redemption in redemptions:
+                await redis_client.publish("tap_redemption", json.dumps({
+                    "device_id": request.remote.device.pk,
+                    "data": redemption
+                }))
+            await redis_client.aclose()
 
         return aiocoap.Message(code=aiocoap.Code.CREATED)
