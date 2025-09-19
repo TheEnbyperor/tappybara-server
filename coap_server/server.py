@@ -45,9 +45,7 @@ async def run_server(address: str, port: int):
 
     coap.CoAPServer(root, coap.CoAPDTLS, (address, port))
 
-    zc = zeroconf.Zeroconf(
-        ip_version=zeroconf.IPVersion.V6Only
-    )
+    zc = zeroconf.Zeroconf(ip_version=zeroconf.IPVersion.V6Only)
     service_info = zeroconf.ServiceInfo(
         type_="_vas-coaps._udp.local.",
         name=f"{settings.COAPS_SERVER_NAME}._vas-coaps._udp.local.",
@@ -59,5 +57,5 @@ async def run_server(address: str, port: int):
     )
     await zc.async_register_service(service_info)
 
-    print("Listening on %s port %d" % (address, port))
+    print("Listening on %s port %d" % (address, port), flush=True)
     await asyncio.get_running_loop().create_future()

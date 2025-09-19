@@ -1,0 +1,9 @@
+Django
+channels
+daphne
+django-cors-headers
+redis
+aiocoap
+zeroconf
+asn1tools
+psycopg2

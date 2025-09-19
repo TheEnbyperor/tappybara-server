@@ -10,15 +10,15 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
-DEBUG = False
-ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",")
-CSRF_TRUSTED_ORIGINS = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
+SECRET_KEY = 'django-insecure-xy$t4d2u@ml0%xdh*u3z50uuj$9-1o(xq!huttfpmr)jc1yo_-'
+
+DEBUG = True
+
+ALLOWED_HOSTS = ["localhost", "tappybara.eu.ngrok.io"]
 
 INSTALLED_APPS = [
     'daphne',
@@ -67,15 +67,8 @@ ASGI_APPLICATION = 'tappybara.asgi.application'
 
 DATABASES = {
     'default': {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "NAME": os.getenv("DB_NAME", "tappybara"),
-        "USER": os.getenv("DB_USER", "tappybara"),
-        "PASSWORD": os.getenv("DB_PASS"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "OPTIONS": {
-            "application_name": os.getenv("DB_APP_NAME", "tappybara"),
-        }
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -100,18 +93,15 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "static/"
-STATIC_ROOT = os.getenv("STATIC_ROOT", "static/")
+STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-REDIS_SERVER = os.getenv("REDIS_SERVER", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
+REDIS_SERVER = "localhost"
+REDIS_PORT = 6379
+REDIS_DB = 1
 
-COAPS_SERVER_NAME = os.getenv("COAPS_SERVER_NAME", "Tappybara")
-COAPS_CERT_FILE = os.getenv("COAPS_CERT_FILE")
-COAPS_KEY_FILE = os.getenv("COAPS_KEY_FILE")
-
-ZEROCONF_INTERFACES = os.getenv("ZEROCONF_INTERFACES", "").split(",")
+COAPS_SERVER_NAME = "Tappybara Test"
+COAPS_CERT_FILE = BASE_DIR / "priv" / "server-cert.der"
+COAPS_KEY_FILE = BASE_DIR / "priv" / "server-key.der"
 
 CORS_ALLOW_ALL_ORIGINS = True

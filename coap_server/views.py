@@ -1,6 +1,5 @@
 import abc
 import asyncio
-import threading
 import redis.client
 import aiocoap.resource
 import aiocoap.error
@@ -188,7 +187,7 @@ class TapResult(aiocoap.resource.Resource, RequestParser):
 
     @parse_request
     async def render_post(self, request, data):
-        print(f"Got tap from {request.remote.device}: {data}")
+        print(f"Got tap from {request.remote.device}: {data}", flush=True)
 
         if "redemption" in data:
             redis_client = redis.asyncio.Redis(connection_pool=self.redis)
